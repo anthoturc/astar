@@ -1,0 +1,11 @@
+# dlls
+*.dll
+
+# code blocks specifics
+*.cbp
+*.depend
+*.layout
+
+# misc. directories
+bin/
+obj/
