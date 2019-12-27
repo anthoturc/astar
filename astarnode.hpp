@@ -12,6 +12,7 @@ private:
     bool visited_;
     int gcost_;
     int hcost_;
+    bool isobstacle_;
 
     astarnode * predecessor_;
 
@@ -30,9 +31,11 @@ public:
 
     void setGCost(int gcost);
     void setHCost(int hcost);
+    void setToObstacle();
 
     astarnode * getPredecessor();
     void setPredecessor(astarnode * predecessor);
+
 };
 
 #endif // _A_STAR_NODE_
