@@ -50,7 +50,49 @@ astarnode::setPredecessor(astarnode * predecessor)
 }
 
 void
-astarnode::setToObstacle()
+astarnode::setObstacle(bool status)
 {
-    isobstacle_ = true;
+    isobstacle_ = status;
+}
+
+bool
+astarnode::isObstacle()
+{
+    return isobstacle_;
+}
+
+bool
+astarnode::visited()
+{
+    return visited_;
+}
+
+void
+astarnode::setVisited(bool status)
+{
+    visited_ = status;
+}
+
+int
+astarnode::getCol()
+{
+    return col_;
+}
+
+int
+astarnode::getRow()
+{
+    return row_;
+}
+
+void
+astarnode::setCol(int col)
+{
+    col_ = col;
+}
+
+void
+astarnode::setRow(int row)
+{
+    row_ = row;
 }
