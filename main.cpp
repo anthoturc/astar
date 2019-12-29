@@ -11,16 +11,17 @@
 
 #include <iostream>
 #include <vector>
-#include <queue>
 #include <math.h>
+#include <algorithm>
+#include <queue>
 
 #include "astarnode.hpp"
 
 
 
 /* window width and height */
-#define W 600
-#define H 600
+#define W 900
+#define H 900
 
 /* specs for each box that will be drawn */
 #define BOX_W 30
@@ -42,6 +43,9 @@
 #define SRC_COLOR sf::Color(51, 51, 255)
 #define DEST_COLOR sf::Color(255,51,51)
 #define DEFAULT_COLOR sf::Color(255, 250, 250)
+#define VISITED_COLOR sf::Color(255, 0, 0)
+#define NEIGHBOR_FOUND_COLOR sf::Color(0, 255, 0)
+#define PATH_COLOR SRC_COLOR
 
 /* application name */
 #define NAME "A* Visualization"
@@ -55,6 +59,7 @@
 #define NSEW_BASE_COST 1
 #define CARDINAL_COST (NSEW_BASE_COST * COST_MULTIPLIER)
 
+#define DIAGONALS_ALLOWED 0 // determines valid directions
 #define DIAGNOAL_BASE_COST 1.4 // this comes from sqrt((1)^2 + (1)^2)
 #define DIAGNOAL_COST (int)(DIAGNOAL_BASE_COST * COST_MULTIPLIER)
 
@@ -68,21 +73,28 @@ volatile bool dragging = false;
 volatile bool runningAStar = false;
 
 /* 8 directions of each nodes neighbors */
+#if DIAGONALS_ALLOWED
 std::vector<std::vector<int>> dirs {{-1, 0}, {-1, -1}, {-1, 1}, {0, 1}, {0, -1}, {1, -1}, {1, 0}, {1, 1}};
+#else
+std::vector<std::vector<int>> dirs {{-1, 0}, {0, 1}, {0, -1}, {1, 0}};
+#endif // DIAGONALS_ALLOWED
+
+
+
+void drawGrid(sf::RenderWindow& w);
 
 /**** A* algorithm ****/
-
-struct comp // used by priority queue for min distance
+struct comp
 {
     inline bool operator()(astarnode * lhs, astarnode * rhs) {
-        int lhsFCost = lhs->getFCost();
-        int rhsFCost = rhs->getFCost();
+        int lFCost = lhs->getFCost();
+        int rFCost = rhs->getFCost();
 
-        if (lhsFCost == rhsFCost) {
-            return lhs->getHCost() > rhs->getHCost();
+        if (lFCost == rFCost) {
+            return lhs->getGCost() > rhs->getGCost();
         }
 
-        return lhsFCost > rhsFCost;
+        return lFCost > rFCost;
     }
 };
 
@@ -95,31 +107,47 @@ validNeighbor(int row, int col)
 }
 
 void
-runAStar()
+runAStar(sf::RenderWindow& w)
 {
-    /* queue to hold nodes to be processed */
-    std::priority_queue<
-        astarnode *,
-        std::vector<astarnode *>,
-        comp
-    > q;
 
     /* initialize the source and destination nodes */
+
+    std::priority_queue<astarnode *, std::vector<astarnode *>, comp> open;
+    std::vector<astarnode *> closed;
+    std::vector<astarnode *> inopen;
+
     source->setGCost(0);
     source->setHCost(INT_MAX);
 
     dest->setGCost(INT_MAX);
     dest->setHCost(0);
 
-    q.push(source);
+    open.push(source);
+    inopen.push_back(source);
 
-    while (!q.empty()) {
-        astarnode * curr = q.top();
-        q.pop();
+    while (!open.empty()) { // note this will be infinite if the destination is unreachable
 
-        curr->setVisited(true);
+        astarnode * curr = open.top();
+        open.pop();
 
-        if (curr == dest) return;
+        inopen.erase( // remove from open
+            std::remove_if(
+                inopen.begin(),
+                inopen.end(),
+                [&curr](astarnode * p) {
+                    return p->getRow() == curr->getRow() && p->getCol() == curr->getCol();
+                }
+            )
+        );
+
+        if (curr != source)
+            curr->r_->setFillColor(VISITED_COLOR);
+
+        if (curr == dest) break;
+#if DEBUG
+        std::cout << "curr not dest" << std::endl;
+#endif // DEBUG
+        closed.push_back(curr);
 
         int row = curr->getRow();
         int col = curr->getCol();
@@ -132,37 +160,111 @@ runAStar()
 
             if (validNeighbor(neighborRow, neighborCol)) {
                 astarnode * neighbor = grid[neighborRow][neighborCol];
-                if (neighbor->isObstacle()
-                    || neighbor->visited()) {
-                    continue;
-                }
+
+                if (neighbor->isObstacle()) continue;
 
                 // calculate the g-cost for the neighboring node
-                int cost = CARDINAL_COST;
+                int gcost = CARDINAL_COST;
 
+#if DIAGONALS_ALLOWED
                 bool isDiagonal = (d[0] == 1 && d[1] == 1) || (d[0] == 1 && d[1] == -1)
-                    || (d[0] == -1 && d[1] == -1) || (d[0] == -1 && d[0] == 1);
+                    || (d[0] == -1 && d[1] == -1) || (d[0] == -1 && d[1] == 1);
 
                 if (isDiagonal) {
-                    cost = DIAGNOAL_COST;
+                    gcost = DIAGNOAL_COST;
                 }
-                neighbor->setGCost(currGCost + cost);
+#endif // DIAGNOALS_ALLOWED
 
-                // use the euclidean distance as the h-cost
+
+                gcost += currGCost;
+
+                // calculate the h-cost for the neighboring nodes
                 int x = neighborCol - col;
                 int y = neighborRow - row;
+                // use the euclidean distance as the h-cost
+                int hcost = ((int)sqrt(pow((double)x, 2) + pow((double)y, 2)))*COST_MULTIPLIER;
 
-                int hcost = (int)sqrt(pow((double)x, 2) + pow((double)y, 2));
-                neighbor->setHCost(hcost);
+                int fcost = hcost + gcost;
 
-                // make current node the predecessor
-                neighbor->setPredecessor(curr);
+                auto itOpen = std::find(inopen.begin(), inopen.end(), neighbor);
+                auto itClosed = std::find(closed.begin(), closed.end(), neighbor);
 
-                // insert neighbor into queue to be processed.
-                q.push(neighbor);
+
+                if (itOpen != inopen.end() && gcost < neighbor->getGCost()) {
+
+                    std::vector<astarnode *> tmp;
+
+                    while (!open.empty()) {
+                        if (open.top() != neighbor) {
+                            tmp.push_back(open.top());
+
+                        }
+                        open.pop();
+                    }
+
+                    for (auto node : tmp) {
+                        open.push(node);
+                    }
+
+                    inopen.erase( // remove from open
+                        std::remove_if(
+                            inopen.begin(),
+                            inopen.end(),
+                            [&curr](astarnode * p) {
+                                return p->getRow() == curr->getRow() && p->getCol() == curr->getCol();
+                            }
+                        )
+                    );
+
+                    neighbor->r_->setFillColor(DEFAULT_COLOR);
+                }
+
+                if (itClosed != closed.end() && gcost < neighbor->getGCost()) {
+                    closed.erase( // remove from open
+                        std::remove_if(
+                            closed.begin(),
+                            closed.end(),
+                            [&curr](astarnode * p) {
+                                return p->getRow() == curr->getRow() && p->getCol() == curr->getCol();
+                            }
+                        )
+                    );
+                    neighbor->r_->setFillColor(DEFAULT_COLOR);
+                }
+
+                itOpen = std::find(inopen.begin(), inopen.end(), neighbor);
+                itClosed = std::find(closed.begin(), closed.end(), neighbor);
+
+                if (itOpen == inopen.end() && itClosed == closed.end())  {
+                    // set costs
+                    neighbor->setPredecessor(curr);
+                    neighbor->setGCost(gcost);
+                    neighbor->setHCost(hcost);
+
+                    neighbor->r_->setFillColor(NEIGHBOR_FOUND_COLOR);
+
+                    // add to open
+                    open.push(neighbor);
+                    inopen.push_back(neighbor);
+                }
             }
         }
+        w.clear();
+        drawGrid(w);
+        w.display();
+
     }
+
+    w.clear();
+    runningAStar = false;
+
+    astarnode * tmp = dest;
+    while (tmp) {
+        tmp->r_->setFillColor(PATH_COLOR);
+        tmp = tmp->getPredecessor();
+    }
+    drawGrid(w);
+    w.display();
 }
 
 /**** grid initialization ****/
@@ -210,7 +312,6 @@ resetGrid()
 
     for (auto row : grid) {
         for (auto node : row) {
-            node->setVisited(false);
             node->setGCost(INT_MAX);
             node->setHCost(INT_MAX);
             node->setObstacle(false);
@@ -284,13 +385,13 @@ handleKeyPress(sf::Event& e)
     if (e.key.code == RUN_ASTAR_KEY) {
         if (source && dest) {
             runningAStar = true;
-            runAStar();
-            runningAStar = false;
         }
     } else if (e.key.code == RESET_GRID) {
         resetGrid();
     }
+#if DEBUG
     std::cout << e.key.code << std::endl;
+#endif // DEBUG
 }
 
 /**** window events ****/
@@ -358,7 +459,10 @@ main()
 
         window.clear();
         drawGrid(window);
-        window.display();
+        if (!runningAStar)
+            window.display();
+        else
+            runAStar(window);
     }
 
     return 0;

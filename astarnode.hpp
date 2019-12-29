@@ -9,7 +9,6 @@
 class astarnode
 {
 private:
-    bool visited_;
     int gcost_;
     int hcost_;
     bool isobstacle_;
@@ -31,14 +30,12 @@ public:
 
     int getGCost();
     int getHCost();
-    bool visited();
     bool isObstacle();
     int getRow();
     int getCol();
 
     void setGCost(int gcost);
     void setHCost(int hcost);
-    void setVisited(bool status);
     void setObstacle(bool status);
     void setRow(int row);
     void setCol(int col);

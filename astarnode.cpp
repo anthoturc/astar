@@ -2,7 +2,7 @@
 #include <SFML/Graphics.hpp>
 
 astarnode::astarnode(sf::RectangleShape * r)
-    : visited_(false), gcost_(INT_MAX),
+    : gcost_(INT_MAX),
     hcost_(INT_MAX), isobstacle_(false),
     predecessor_(nullptr), r_(r)
 {}
@@ -59,18 +59,6 @@ bool
 astarnode::isObstacle()
 {
     return isobstacle_;
-}
-
-bool
-astarnode::visited()
-{
-    return visited_;
-}
-
-void
-astarnode::setVisited(bool status)
-{
-    visited_ = status;
 }
 
 int
