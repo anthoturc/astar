@@ -59,7 +59,7 @@
 #define NSEW_BASE_COST 1
 #define CARDINAL_COST (NSEW_BASE_COST * COST_MULTIPLIER)
 
-#define DIAGONALS_ALLOWED 0 // determines valid directions
+#define DIAGONALS_ALLOWED 1 // determines valid directions
 #define DIAGNOAL_BASE_COST 1.4 // this comes from sqrt((1)^2 + (1)^2)
 #define DIAGNOAL_COST (int)(DIAGNOAL_BASE_COST * COST_MULTIPLIER)
 
@@ -98,10 +98,19 @@ struct comp
     }
 };
 
+int
+manhattan_heuristic(astarnode * n1, astarnode * n2)
+{
+    return COST_MULTIPLIER*(
+        std::abs(n1->getCol() - n2->getCol())
+    +   std::abs(n1->getRow() - n2->getRow())
+    );
+}
+
 bool
 validNeighbor(int row, int col)
 {
-    if (row < 0 || row >= (H/BOX_W)) return false;
+    if (row < 0 || row >= (H/BOX_H)) return false;
     if (col < 0 || col >= (W/BOX_W)) return false;
     return true;
 }
@@ -113,7 +122,6 @@ runAStar(sf::RenderWindow& w)
     /* initialize the source and destination nodes */
 
     std::priority_queue<astarnode *, std::vector<astarnode *>, comp> open;
-    std::vector<astarnode *> closed;
     std::vector<astarnode *> inopen;
 
     source->setGCost(0);
@@ -130,16 +138,6 @@ runAStar(sf::RenderWindow& w)
         astarnode * curr = open.top();
         open.pop();
 
-        inopen.erase( // remove from open
-            std::remove_if(
-                inopen.begin(),
-                inopen.end(),
-                [&curr](astarnode * p) {
-                    return p->getRow() == curr->getRow() && p->getCol() == curr->getCol();
-                }
-            )
-        );
-
         if (curr != source)
             curr->r_->setFillColor(VISITED_COLOR);
 
@@ -147,7 +145,6 @@ runAStar(sf::RenderWindow& w)
 #if DEBUG
         std::cout << "curr not dest" << std::endl;
 #endif // DEBUG
-        closed.push_back(curr);
 
         int row = curr->getRow();
         int col = curr->getCol();
@@ -155,6 +152,7 @@ runAStar(sf::RenderWindow& w)
         int currGCost = curr->getGCost();
 
         for (auto d : dirs) {
+
             int neighborRow = row + d[0];
             int neighborCol = col + d[1];
 
@@ -178,64 +176,13 @@ runAStar(sf::RenderWindow& w)
 
                 gcost += currGCost;
 
-                // calculate the h-cost for the neighboring nodes
-                int x = neighborCol - col;
-                int y = neighborRow - row;
-                // use the euclidean distance as the h-cost
-                int hcost = ((int)sqrt(pow((double)x, 2) + pow((double)y, 2)))*COST_MULTIPLIER;
-
-                int fcost = hcost + gcost;
-
                 auto itOpen = std::find(inopen.begin(), inopen.end(), neighbor);
-                auto itClosed = std::find(closed.begin(), closed.end(), neighbor);
+
+                if (itOpen == inopen.end() || gcost < neighbor->getGCost()) {
 
 
-                if (itOpen != inopen.end() && gcost < neighbor->getGCost()) {
+                    int hcost = manhattan_heuristic(neighbor, dest);
 
-                    std::vector<astarnode *> tmp;
-
-                    while (!open.empty()) {
-                        if (open.top() != neighbor) {
-                            tmp.push_back(open.top());
-
-                        }
-                        open.pop();
-                    }
-
-                    for (auto node : tmp) {
-                        open.push(node);
-                    }
-
-                    inopen.erase( // remove from open
-                        std::remove_if(
-                            inopen.begin(),
-                            inopen.end(),
-                            [&curr](astarnode * p) {
-                                return p->getRow() == curr->getRow() && p->getCol() == curr->getCol();
-                            }
-                        )
-                    );
-
-                    neighbor->r_->setFillColor(DEFAULT_COLOR);
-                }
-
-                if (itClosed != closed.end() && gcost < neighbor->getGCost()) {
-                    closed.erase( // remove from open
-                        std::remove_if(
-                            closed.begin(),
-                            closed.end(),
-                            [&curr](astarnode * p) {
-                                return p->getRow() == curr->getRow() && p->getCol() == curr->getCol();
-                            }
-                        )
-                    );
-                    neighbor->r_->setFillColor(DEFAULT_COLOR);
-                }
-
-                itOpen = std::find(inopen.begin(), inopen.end(), neighbor);
-                itClosed = std::find(closed.begin(), closed.end(), neighbor);
-
-                if (itOpen == inopen.end() && itClosed == closed.end())  {
                     // set costs
                     neighbor->setPredecessor(curr);
                     neighbor->setGCost(gcost);
