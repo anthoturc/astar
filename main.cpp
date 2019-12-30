@@ -14,6 +14,7 @@
 #include <math.h>
 #include <algorithm>
 #include <queue>
+#include <unistd.h>
 
 #include "astarnode.hpp"
 
@@ -59,7 +60,7 @@
 #define NSEW_BASE_COST 1
 #define CARDINAL_COST (NSEW_BASE_COST * COST_MULTIPLIER)
 
-#define DIAGONALS_ALLOWED 1 // determines valid directions
+#define DIAGONALS_ALLOWED 0 // determines valid directions
 #define DIAGNOAL_BASE_COST 1.4 // this comes from sqrt((1)^2 + (1)^2)
 #define DIAGNOAL_COST (int)(DIAGNOAL_BASE_COST * COST_MULTIPLIER)
 
@@ -209,9 +210,10 @@ runAStar(sf::RenderWindow& w)
     while (tmp) {
         tmp->r_->setFillColor(PATH_COLOR);
         tmp = tmp->getPredecessor();
+        drawGrid(w);
+        w.display();
+        usleep(2000000); // sleep for 1 sec
     }
-    drawGrid(w);
-    w.display();
 }
 
 /**** grid initialization ****/
@@ -299,7 +301,14 @@ setObstacle(sf::RenderWindow& w, sf::Event& e)
     if (DEBUG)
         std::cout << xpos << ", " << ypos << std::endl;
 
+
     astarnode * obstacle = setNodeColor(xpos, ypos, sf::Color::Black);
+    if (obstacle == source) {
+        setNodeColor(xpos, ypos, SRC_COLOR);
+        return;
+    } else if (obstacle == dest) {
+        setNodeColor(xpos, ypos, DEST_COLOR);
+    }
     obstacle->setObstacle(true);
 }
 /***********/
