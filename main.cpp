@@ -1,5 +1,4 @@
-// TODO: make the colors of the nodes variables and create different colors with different meanings
-// TODO: play around with hashing the mouse clicks... on mouse click change the color of the sprite
+//TODO: modularize this file. That way you can perform different algorithms on the same grid (:
 
 /*
  *  A* visualization
@@ -18,15 +17,18 @@
 
 #include "astarnode.hpp"
 
+#define FAST_RENDER 1
 
+/* amount of time to sleep */
+#define SLEEP_TIME 2000000
 
 /* window width and height */
 #define W 900
 #define H 900
 
 /* specs for each box that will be drawn */
-#define BOX_W 30
-#define BOX_H 30
+#define BOX_W 10
+#define BOX_H 10
 
 /* thickness of border between nodes */
 #define BORDER_THICKNESS 1.5
@@ -47,6 +49,7 @@
 #define VISITED_COLOR sf::Color(255, 0, 0)
 #define NEIGHBOR_FOUND_COLOR sf::Color(0, 255, 0)
 #define PATH_COLOR SRC_COLOR
+#define PATH_NOT_FOUND_COLOR sf::Color::Magenta
 
 /* application name */
 #define NAME "A* Visualization"
@@ -60,7 +63,7 @@
 #define NSEW_BASE_COST 1
 #define CARDINAL_COST (NSEW_BASE_COST * COST_MULTIPLIER)
 
-#define DIAGONALS_ALLOWED 0 // determines valid directions
+#define DIAGONALS_ALLOWED 1 // determines valid directions
 #define DIAGNOAL_BASE_COST 1.4 // this comes from sqrt((1)^2 + (1)^2)
 #define DIAGNOAL_COST (int)(DIAGNOAL_BASE_COST * COST_MULTIPLIER)
 
@@ -141,6 +144,13 @@ runAStar(sf::RenderWindow& w)
 
         if (curr != source)
             curr->r_->setFillColor(VISITED_COLOR);
+#if FAST_RENDER
+
+#else
+        w.clear();
+        drawGrid(w);
+        w.display();
+#endif // FAST_RENDER
 
         if (curr == dest) break;
 #if DEBUG
@@ -190,29 +200,38 @@ runAStar(sf::RenderWindow& w)
                     neighbor->setHCost(hcost);
 
                     neighbor->r_->setFillColor(NEIGHBOR_FOUND_COLOR);
-
                     // add to open
                     open.push(neighbor);
                     inopen.push_back(neighbor);
                 }
             }
         }
+#if FAST_RENDER
+#else
         w.clear();
         drawGrid(w);
         w.display();
+        usleep(SLEEP_TIME/2);
+#endif // FAST_RENDER
 
     }
 
     w.clear();
     runningAStar = false;
+    if (!dest->getPredecessor()) {
+        dest->r_->setFillColor(PATH_NOT_FOUND_COLOR);
+        drawGrid(w);
+        w.display();
+        return;
+    }
 
     astarnode * tmp = dest;
     while (tmp) {
         tmp->r_->setFillColor(PATH_COLOR);
         tmp = tmp->getPredecessor();
         drawGrid(w);
+        usleep(SLEEP_TIME); // sleep for 1 sec
         w.display();
-        usleep(2000000); // sleep for 1 sec
     }
 }
 
