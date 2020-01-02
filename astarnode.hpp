@@ -5,41 +5,30 @@
 #define _A_STAR_NODE_
 
 #include <SFML/Graphics.hpp>
+#include "node.hpp"
 
-class astarnode
+class astarnode : public searchnode
 {
 private:
     int gcost_;
     int hcost_;
     bool isobstacle_;
-    int row_;
-    int col_;
-
     astarnode * predecessor_;
 
 public:
-    sf::RectangleShape * r_;
 
-
-    astarnode(sf::RectangleShape *r);
+    astarnode();
     ~astarnode();
-
-    bool seen();
 
     int getFCost();
 
     int getGCost();
     int getHCost();
     bool isObstacle();
-    int getRow();
-    int getCol();
 
     void setGCost(int gcost);
     void setHCost(int hcost);
     void setObstacle(bool status);
-    void setRow(int row);
-    void setCol(int col);
-
 
     astarnode * getPredecessor();
     void setPredecessor(astarnode * predecessor);

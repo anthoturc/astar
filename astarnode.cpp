@@ -1,10 +1,8 @@
 #include "astarnode.hpp"
 #include <SFML/Graphics.hpp>
 
-astarnode::astarnode(sf::RectangleShape * r)
-    : gcost_(INT_MAX),
-    hcost_(INT_MAX), isobstacle_(false),
-    predecessor_(nullptr), r_(r)
+astarnode::astarnode()
+    : gcost_(INT_MAX), hcost_(INT_MAX), isobstacle_(false), predecessor_(nullptr)
 {}
 
 int
@@ -59,28 +57,4 @@ bool
 astarnode::isObstacle()
 {
     return isobstacle_;
-}
-
-int
-astarnode::getCol()
-{
-    return col_;
-}
-
-int
-astarnode::getRow()
-{
-    return row_;
-}
-
-void
-astarnode::setCol(int col)
-{
-    col_ = col;
-}
-
-void
-astarnode::setRow(int row)
-{
-    row_ = row;
 }
